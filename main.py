@@ -3,7 +3,11 @@
 from fastapi import Body, FastAPI, Response
 from fastapi.responses import JSONResponse
 
-app = FastAPI(title="Task API", version="1.0")
+app = FastAPI(
+    title="Task API",
+    version="1.0",
+    description="A small in-memory CRUD API for managing to-do tasks.",
+)
 
 tasks = [
     {"id": 1, "title": "Learn HTTP basics", "done": False},
@@ -41,22 +45,22 @@ def validate_update(payload: Any):
     return None
 
 
-@app.get("/", summary="Show API information")
+@app.get("/", summary="Show API information", tags=["System"])
 def root():
     return {"name": "Task API", "version": "1.0", "endpoints": ["/tasks"]}
 
 
-@app.get("/health", summary="Check server health")
+@app.get("/health", summary="Check server health", tags=["System"])
 def health():
     return {"status": "ok"}
 
 
-@app.get("/tasks", summary="List all tasks")
+@app.get("/tasks", summary="List all tasks", tags=["Tasks"])
 def list_tasks():
     return tasks
 
 
-@app.get("/tasks/{task_id}", summary="Get one task")
+@app.get("/tasks/{task_id}", summary="Get one task", tags=["Tasks"])
 def get_task(task_id: int):
     task = find_task(task_id)
     if task is None:
@@ -64,7 +68,7 @@ def get_task(task_id: int):
     return task
 
 
-@app.post("/tasks", summary="Create a task", status_code=201)
+@app.post("/tasks", summary="Create a task", status_code=201, tags=["Tasks"])
 def create_task(payload: Any = Body(default=None)):
     error = validate_title(payload)
     if error:
@@ -75,7 +79,7 @@ def create_task(payload: Any = Body(default=None)):
     return JSONResponse(status_code=201, content=task)
 
 
-@app.put("/tasks/{task_id}", summary="Update a task")
+@app.put("/tasks/{task_id}", summary="Update a task", tags=["Tasks"])
 def update_task(task_id: int, payload: Any = Body(default=None)):
     task = find_task(task_id)
     if task is None:
@@ -92,7 +96,7 @@ def update_task(task_id: int, payload: Any = Body(default=None)):
     return task
 
 
-@app.delete("/tasks/{task_id}", summary="Delete a task", status_code=204)
+@app.delete("/tasks/{task_id}", summary="Delete a task", status_code=204, tags=["Tasks"])
 def delete_task(task_id: int):
     task = find_task(task_id)
     if task is None:
