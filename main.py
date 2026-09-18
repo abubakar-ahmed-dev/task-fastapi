@@ -1,19 +1,55 @@
-﻿from typing import Any
+﻿import sqlite3
+from pathlib import Path
+from typing import Any
 
 from fastapi import Body, FastAPI, Response
 from fastapi.responses import JSONResponse
 
+DB_PATH = Path(__file__).with_name("tasks.db")
+
 app = FastAPI(
     title="Task API",
     version="1.0",
-    description="A small in-memory CRUD API for managing to-do tasks.",
+    description="A small SQLite-backed CRUD API for managing to-do tasks.",
 )
+
+SEED_TASKS = [
+    ("Learn HTTP basics", 0),
+    ("Build CRUD endpoints", 0),
+    ("Test with Swagger UI", 0),
+]
 
 tasks = [
     {"id": 1, "title": "Learn HTTP basics", "done": False},
     {"id": 2, "title": "Build CRUD endpoints", "done": False},
     {"id": 3, "title": "Test with Swagger UI", "done": False},
 ]
+
+
+def get_connection():
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def init_db():
+    with get_connection() as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                done INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        task_count = connection.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+        if task_count == 0:
+            connection.executemany("INSERT INTO tasks (title, done) VALUES (?, ?)", SEED_TASKS)
+        connection.commit()
+
+
+init_db()
 
 
 def find_task(task_id: int):

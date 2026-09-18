@@ -3,4 +3,5 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .tmp_pdf_deps/
-docs/screenshots/
+tasks.db
+*.db-journal
