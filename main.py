@@ -125,9 +125,17 @@ def create_task(payload: Any = Body(default=None)):
     if error:
         return JSONResponse(status_code=400, content={"error": error})
 
-    task = {"id": next_task_id(), "title": payload["title"].strip(), "done": False}
-    tasks.append(task)
-    return JSONResponse(status_code=201, content=task)
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "INSERT INTO tasks (title, done) VALUES (?, 0)",
+            (payload["title"].strip(),),
+        )
+        connection.commit()
+        row = connection.execute(
+            "SELECT id, title, done FROM tasks WHERE id = ?",
+            (cursor.lastrowid,),
+        ).fetchone()
+    return JSONResponse(status_code=201, content=row_to_task(row))
 
 
 @app.put("/tasks/{task_id}", summary="Update a task", tags=["Tasks"])
@@ -155,4 +163,5 @@ def delete_task(task_id: int):
 
     tasks.remove(task)
     return Response(status_code=204)
+
 
