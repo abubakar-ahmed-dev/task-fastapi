@@ -56,6 +56,19 @@ def find_task(task_id: int):
     return next((task for task in tasks if task["id"] == task_id), None)
 
 
+def row_to_task(row):
+    return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
+
+
+def find_task_in_db(task_id: int):
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT id, title, done FROM tasks WHERE id = ?",
+            (task_id,),
+        ).fetchone()
+    return row_to_task(row) if row else None
+
+
 def next_task_id():
     return max((task["id"] for task in tasks), default=0) + 1
 
@@ -93,12 +106,14 @@ def health():
 
 @app.get("/tasks", summary="List all tasks", tags=["Tasks"])
 def list_tasks():
-    return tasks
+    with get_connection() as connection:
+        rows = connection.execute("SELECT id, title, done FROM tasks ORDER BY id").fetchall()
+    return [row_to_task(row) for row in rows]
 
 
 @app.get("/tasks/{task_id}", summary="Get one task", tags=["Tasks"])
 def get_task(task_id: int):
-    task = find_task(task_id)
+    task = find_task_in_db(task_id)
     if task is None:
         return JSONResponse(status_code=404, content={"error": f"Task {task_id} not found"})
     return task
@@ -140,3 +155,4 @@ def delete_task(task_id: int):
 
     tasks.remove(task)
     return Response(status_code=204)
+
