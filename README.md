@@ -1,6 +1,18 @@
 ﻿# Task API
 
-A small FastAPI CRUD API for managing a to-do list. Tasks are stored in memory, so changes are lost when the server restarts.
+A small FastAPI CRUD API for managing a to-do list. The API now stores tasks in SQLite, so data survives server restarts.
+
+## Why SQLite
+
+SQLite was chosen because it is lightweight, free, and stores the whole database in a single local file. It does not need a separate database server, which makes it a good fit for this first database assignment.
+
+The database file is created automatically at the project root:
+
+```text
+tasks.db
+```
+
+`tasks.db` is not committed to GitHub. When someone runs the project, the app creates the database and the `tasks` table if they do not already exist. The three example tasks are inserted only when the table is empty.
 
 ## Install
 
@@ -58,9 +70,7 @@ Output:
 
 ```text
 HTTP/1.1 200 OK
-date: Thu, 17 Sep 2026 18:19:01 GMT
 server: uvicorn
-content-length: 49
 content-type: application/json
 
 {"id":1,"title":"Learn HTTP basics","done":false}
@@ -86,8 +96,22 @@ Delete a task:
 curl -i -X DELETE http://localhost:8000/tasks/4
 ```
 
-## Swagger UI
+## SQL Query Example
 
-![Swagger UI screenshot](docs/swagger-docs.png)
+One query executed manually against `tasks.db`:
 
-Swagger UI lists the API endpoints and can run the full create, read, update, and delete flow with "Try it out".
+```sql
+SELECT * FROM tasks;
+```
+
+Other required SQL exploration notes are in [`docs/assignment-2/sql-queries.md`](docs/assignment-2/sql-queries.md).
+
+## Screenshots
+
+Swagger UI:
+
+![Swagger UI screenshot](docs/assignment-1/swagger-docs.png)
+
+SQLite database view:
+
+![SQLite database viewer screenshot](docs/assignment-2/screenshots/database-viewer.png)
