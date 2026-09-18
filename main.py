@@ -19,12 +19,6 @@ SEED_TASKS = [
     ("Test with Swagger UI", 0),
 ]
 
-tasks = [
-    {"id": 1, "title": "Learn HTTP basics", "done": False},
-    {"id": 2, "title": "Build CRUD endpoints", "done": False},
-    {"id": 3, "title": "Test with Swagger UI", "done": False},
-]
-
 
 def get_connection():
     connection = sqlite3.connect(DB_PATH)
@@ -52,10 +46,6 @@ def init_db():
 init_db()
 
 
-def find_task(task_id: int):
-    return next((task for task in tasks if task["id"] == task_id), None)
-
-
 def row_to_task(row):
     return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
 
@@ -67,10 +57,6 @@ def find_task_in_db(task_id: int):
             (task_id,),
         ).fetchone()
     return row_to_task(row) if row else None
-
-
-def next_task_id():
-    return max((task["id"] for task in tasks), default=0) + 1
 
 
 def validate_title(payload: Any):
@@ -140,7 +126,7 @@ def create_task(payload: Any = Body(default=None)):
 
 @app.put("/tasks/{task_id}", summary="Update a task", tags=["Tasks"])
 def update_task(task_id: int, payload: Any = Body(default=None)):
-    task = find_task(task_id)
+    task = find_task_in_db(task_id)
     if task is None:
         return JSONResponse(status_code=404, content={"error": f"Task {task_id} not found"})
 
@@ -148,20 +134,28 @@ def update_task(task_id: int, payload: Any = Body(default=None)):
     if error:
         return JSONResponse(status_code=400, content={"error": error})
 
-    if "title" in payload:
-        task["title"] = payload["title"].strip()
-    if "done" in payload:
-        task["done"] = payload["done"]
-    return task
+    title = payload.get("title", task["title"])
+    done = payload.get("done", task["done"])
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+            (title.strip(), int(done), task_id),
+        )
+        connection.commit()
+        row = connection.execute(
+            "SELECT id, title, done FROM tasks WHERE id = ?",
+            (task_id,),
+        ).fetchone()
+    return row_to_task(row)
 
 
 @app.delete("/tasks/{task_id}", summary="Delete a task", status_code=204, tags=["Tasks"])
 def delete_task(task_id: int):
-    task = find_task(task_id)
+    task = find_task_in_db(task_id)
     if task is None:
         return JSONResponse(status_code=404, content={"error": f"Task {task_id} not found"})
 
-    tasks.remove(task)
+    with get_connection() as connection:
+        connection.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        connection.commit()
     return Response(status_code=204)
-
-
