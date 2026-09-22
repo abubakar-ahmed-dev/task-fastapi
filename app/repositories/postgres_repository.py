@@ -67,13 +67,34 @@ class PostgresTaskRepository:
         return self.row_to_task(row) if row else None
 
     def create_task(self, title: str) -> dict:
-        raise NotImplementedError("Postgres writes are added in Stage 3")
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id, title, done",
+                    (title, False),
+                )
+                row = cursor.fetchone()
+            connection.commit()
+        return self.row_to_task(row)
 
     def update_task(self, task_id: int, title: str, done: bool) -> dict | None:
-        raise NotImplementedError("Postgres writes are added in Stage 3")
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE tasks SET title = %s, done = %s WHERE id = %s RETURNING id, title, done",
+                    (title, done, task_id),
+                )
+                row = cursor.fetchone()
+            connection.commit()
+        return self.row_to_task(row) if row else None
 
     def delete_task(self, task_id: int) -> bool:
-        raise NotImplementedError("Postgres writes are added in Stage 3")
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
+                deleted = cursor.rowcount > 0
+            connection.commit()
+        return deleted
 
     @staticmethod
     def row_to_task(row: dict) -> dict:
