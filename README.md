@@ -115,3 +115,13 @@ Swagger UI:
 SQLite database view:
 
 ![SQLite database viewer screenshot](docs/assignment-2/screenshots/database-viewer.png)
+## Assignment 3 Docker Postgres Start
+
+Manual Postgres command for the first Docker checkpoint:
+
+```bash
+docker run --name taskdb -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tasks -p 5432:5432 -v taskdata:/var/lib/postgresql/data -d postgres
+```
+
+This starts Postgres in Docker with a named volume so database rows survive container restarts. The full one-command `docker compose up` stack is added in the later assignment stage.
+
