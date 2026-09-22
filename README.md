@@ -1,29 +1,19 @@
 ﻿# Task API
 
-A small FastAPI CRUD API for managing a to-do list. The API now stores tasks in SQLite, so data survives server restarts.
+A small FastAPI CRUD API for managing a to-do list. The API started with in-memory storage, moved to SQLite, and now runs against PostgreSQL in Docker.
 
-## Why SQLite
+## Run The Full Stack
 
-SQLite was chosen because it is lightweight, free, and stores the whole database in a single local file. It does not need a separate database server, which makes it a good fit for this first database assignment.
-
-The database file is created automatically at the project root:
-
-```text
-tasks.db
-```
-
-`tasks.db` is not committed to GitHub. When someone runs the project, the app creates the database and the `tasks` table if they do not already exist. The three example tasks are inserted only when the table is empty.
-
-## Install
+Create a local `.env` from the committed example:
 
 ```bash
-python -m pip install -r requirements.txt
+cp .env.example .env
 ```
 
-## Run
+Start the API and Postgres together:
 
 ```bash
-python -m uvicorn main:app --reload --port 8000
+docker compose up --build
 ```
 
 Open the API at:
@@ -36,6 +26,52 @@ Open Swagger UI at:
 
 ```text
 http://localhost:8000/docs
+```
+
+## Configuration
+
+The app reads its database connection from `DATABASE_URL`.
+
+Local `.env` example:
+
+```text
+DATABASE_URL=postgres://postgres:dev@localhost:5432/tasks
+POSTGRES_PASSWORD=dev
+POSTGRES_DB=tasks
+```
+
+Inside Docker Compose, the API connects to Postgres through the Compose service name `db`:
+
+```text
+postgres://postgres:dev@db:5432/tasks
+```
+
+`.env` is gitignored. `.env.example` is committed so a clean clone knows which variables to set.
+
+## Storage Architecture
+
+Routes call the service layer, and the service calls a repository. The Postgres-specific SQL lives in `app/repositories/postgres_repository.py`.
+
+Before the Postgres swap, the project was refactored to isolate storage behind the repository boundary. After that, the API route behavior stayed the same while the storage engine changed from SQLite to Postgres.
+
+## Database
+
+Postgres runs in Docker using the official `postgres:16` image. Data is stored in a named Docker volume:
+
+```text
+taskdata
+```
+
+The app creates the `tasks` table automatically if it is missing and seeds three example tasks only when the table is empty.
+
+Schema:
+
+```sql
+CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    done BOOLEAN NOT NULL DEFAULT FALSE
+);
 ```
 
 ## Endpoints
@@ -63,7 +99,7 @@ Error behavior:
 Command:
 
 ```bash
-curl -i http://localhost:8000/tasks/1
+curl -i http://localhost:8000/tasks
 ```
 
 Output:
@@ -73,7 +109,7 @@ HTTP/1.1 200 OK
 server: uvicorn
 content-type: application/json
 
-{"id":1,"title":"Learn HTTP basics","done":false}
+[{"id":1,"title":"Learn HTTP basics","done":false},{"id":2,"title":"Build CRUD endpoints","done":false},{"id":3,"title":"Test with Swagger UI","done":false}]
 ```
 
 ## Example Requests
@@ -81,13 +117,13 @@ content-type: application/json
 Create a task:
 
 ```bash
-curl -i -X POST http://localhost:8000/tasks -H "Content-Type: application/json" -d "{\"title\":\"Buy milk\"}"
+curl -i -X POST http://localhost:8000/tasks -H "Content-Type: application/json" -d "{\"title\":\"Postgres task\"}"
 ```
 
 Update a task:
 
 ```bash
-curl -i -X PUT http://localhost:8000/tasks/4 -H "Content-Type: application/json" -d "{\"title\":\"Updated task\",\"done\":true}"
+curl -i -X PUT http://localhost:8000/tasks/4 -H "Content-Type: application/json" -d "{\"title\":\"Updated Postgres task\",\"done\":true}"
 ```
 
 Delete a task:
@@ -96,32 +132,29 @@ Delete a task:
 curl -i -X DELETE http://localhost:8000/tasks/4
 ```
 
-## SQL Query Example
+## Persistence Check
 
-One query executed manually against `tasks.db`:
-
-```sql
-SELECT * FROM tasks;
-```
-
-Other required SQL exploration notes are in [`docs/assignment-2/sql-queries.md`](docs/assignment-2/sql-queries.md).
-
-## Screenshots
-
-Swagger UI:
-
-![Swagger UI screenshot](docs/assignment-1/swagger-docs.png)
-
-SQLite database view:
-
-![SQLite database viewer screenshot](docs/assignment-2/screenshots/database-viewer.png)
-## Assignment 3 Docker Postgres Start
-
-Manual Postgres command for the first Docker checkpoint:
+To prove persistence across a full stack restart:
 
 ```bash
-docker run --name taskdb -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tasks -p 5432:5432 -v taskdata:/var/lib/postgresql/data -d postgres
+docker compose up --build
+curl -i -X POST http://localhost:8000/tasks -H "Content-Type: application/json" -d "{\"title\":\"Survives restart\"}"
+docker compose down
+docker compose up
+curl -i http://localhost:8000/tasks
 ```
 
-This starts Postgres in Docker with a named volume so database rows survive container restarts. The full one-command `docker compose up` stack is added in the later assignment stage.
+The created task should still appear after `docker compose down` and `docker compose up` because Postgres stores data in the `taskdata` volume.
 
+## Inspect Data In Postgres
+
+```bash
+docker compose exec db psql -U postgres -d tasks -c "\dt"
+docker compose exec db psql -U postgres -d tasks -c "SELECT * FROM tasks;"
+```
+
+Postgres data view:
+
+![Postgres data screenshot](docs/assignment-3/screenshots/postgres-data.png)
+
+Previous assignment screenshots are stored under `docs/assignment-1/` and `docs/assignment-2/`.
