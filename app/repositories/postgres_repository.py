@@ -50,10 +50,21 @@ class PostgresTaskRepository:
         raise RuntimeError("Could not connect to Postgres") from last_error
 
     def list_tasks(self) -> list[dict]:
-        raise NotImplementedError("Postgres reads are added in Stage 2")
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, title, done FROM tasks ORDER BY id")
+                rows = cursor.fetchall()
+        return [self.row_to_task(row) for row in rows]
 
     def get_task(self, task_id: int) -> dict | None:
-        raise NotImplementedError("Postgres reads are added in Stage 2")
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id, title, done FROM tasks WHERE id = %s",
+                    (task_id,),
+                )
+                row = cursor.fetchone()
+        return self.row_to_task(row) if row else None
 
     def create_task(self, title: str) -> dict:
         raise NotImplementedError("Postgres writes are added in Stage 3")
@@ -63,3 +74,7 @@ class PostgresTaskRepository:
 
     def delete_task(self, task_id: int) -> bool:
         raise NotImplementedError("Postgres writes are added in Stage 3")
+
+    @staticmethod
+    def row_to_task(row: dict) -> dict:
+        return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
