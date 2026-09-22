@@ -3,16 +3,16 @@
 from fastapi import Body, FastAPI, Response
 from fastapi.responses import JSONResponse
 
-from app.repositories.sqlite_repository import SQLiteTaskRepository
+from app.repositories.factory import create_repository
 from app.service import TaskService
 
 app = FastAPI(
     title="Task API",
     version="1.0",
-    description="A small SQLite-backed CRUD API for managing to-do tasks.",
+    description="A small Postgres-backed CRUD API for managing to-do tasks.",
 )
 
-repository = SQLiteTaskRepository()
+repository = create_repository()
 repository.init_db()
 service = TaskService(repository)
 
